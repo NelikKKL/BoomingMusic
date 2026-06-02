@@ -3,15 +3,19 @@ name: Android CI
 on:
   push:
     branches: [ "master", "stable" ]
+    tags: [ "v[0-9]+.[0-9]+.[0-9]+" ]
   pull_request:
     branches: [ "master", "stable" ]
+
+permissions:
+  contents: write
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: 21
           distribution: 'zulu'
@@ -26,22 +30,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - uses: actions/setup-java@v5
-      with:
-        java-version: 21
-        distribution: 'zulu'
-        cache: gradle
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: 'zulu'
+          cache: gradle
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-    - name: Build with Gradle
-      run: ./gradlew assemble
+      - name: Build with Gradle
+        run: ./gradlew assembleFdroidRelease
 
-    - name: Upload PR artifacts
-      if: github.event_name == 'pull_request'
-      uses: actions/upload-artifact@v7
-      with:
-        name: release-apk
-        path: app/build/outputs/apk/*/release/BoomingMusic-*.apk
+      - name: Upload PR artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/*/release/BoomingMusic-*.apk
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: app/build/outputs/apk/*/release/BoomingMusic-*.apk
